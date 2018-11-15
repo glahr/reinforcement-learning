@@ -44,9 +44,6 @@ class StateProcessor():
         """
         return sess.run(self.output, { self.input_state: state })
 
-
-
-
 class Estimator():
     """Q-Value Estimator neural network.
 
@@ -102,7 +99,10 @@ class Estimator():
 
         # Optimizer Parameters from original paper
         self.optimizer = tf.train.RMSPropOptimizer(0.00025, 0.99, 0.0, 1e-6)
-        self.train_op = self.optimizer.minimize(self.loss, global_step=tf.contrib.framework.get_global_step())
+        # self.train_op = self.optimizer.minimize(self.loss, global_step=tf.contrib.framework.get_global_step())
+        self.train_op = self.optimizer.minimize(self.loss, global_step=tf.train.get_global_step())
+
+
 
         # Summaries for Tensorboard
         self.summaries = tf.summary.merge([
@@ -141,40 +141,38 @@ class Estimator():
         """
         feed_dict = { self.X_pl: s, self.y_pl: y, self.actions_pl: a }
         summaries, global_step, _, loss = sess.run(
-            [self.summaries, tf.contrib.framework.get_global_step(), self.train_op, self.loss],
+            # [self.summaries, tf.contrib.framework.get_global_step(), self.train_op, self.loss],
+            [self.summaries, tf.train.get_global_step(), self.train_op, self.loss],
             feed_dict)
         if self.summary_writer:
             self.summary_writer.add_summary(summaries, global_step)
         return loss
 
-
-# For Testing....
-
-tf.reset_default_graph()
-global_step = tf.Variable(0, name="global_step", trainable=False)
-
-e = Estimator(scope="test")
-sp = StateProcessor()
-
-with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
-
-    # Example observation batch
-    observation = env.reset()
-
-    observation_p = sp.process(sess, observation)
-    observation = np.stack([observation_p] * 4, axis=2)
-    observations = np.array([observation] * 2)
-
-    # Test Prediction
-    print(e.predict(sess, observations))
-
-    # Test training step
-    y = np.array([10.0, 10.0])
-    a = np.array([1, 3])
-    print(e.update(sess, observations, a, y))
-
-
+# # For Testing....
+#
+# tf.reset_default_graph()
+# global_step = tf.Variable(0, name="global_step", trainable=False)
+#
+# e = Estimator(scope="test")
+# sp = StateProcessor()
+#
+# with tf.Session() as sess:
+#     sess.run(tf.global_variables_initializer())
+#
+#     # Example observation batch
+#     observation = env.reset()
+#
+#     observation_p = sp.process(sess, observation)
+#     observation = np.stack([observation_p] * 4, axis=2)
+#     observations = np.array([observation] * 2)
+#
+#     # Test Prediction
+#     print(e.predict(sess, observations))
+#
+#     # Test training step
+#     y = np.array([10.0, 10.0])
+#     a = np.array([1, 3])
+#     print(e.update(sess, observations, a, y))
 
 class ModelParametersCopier():
     """
@@ -206,7 +204,6 @@ class ModelParametersCopier():
         """
         sess.run(self.update_ops)
 
-
 def make_epsilon_greedy_policy(estimator, nA):
     """
     Creates an epsilon-greedy policy based on a given Q-function approximator and epsilon.
@@ -227,8 +224,6 @@ def make_epsilon_greedy_policy(estimator, nA):
         A[best_action] += (1.0 - epsilon)
         return A
     return policy_fn
-
-
 
 def deep_q_learning(sess,
                   env,
@@ -259,7 +254,7 @@ def deep_q_learning(sess,
       num_episodes: Number of episodes to run for
       experiment_dir: Directory to save Tensorflow summaries in
       replay_memory_size: Size of the replay memory
-      replay_memory_init_size: Number of random experiences to sampel when initializing
+      replay_memory_init_size: Number of random experiences to sample when initializing
         the reply memory.
       update_target_estimator_every: Copy parameters from the Q estimator to the
         target estimator every N steps
@@ -309,7 +304,8 @@ def deep_q_learning(sess,
       saver.restore(sess, latest_checkpoint)
 
   # Get the current time step
-  total_t = sess.run(tf.contrib.framework.get_global_step())
+  # total_t = sess.run(tf.contrib.framework.get_global_step())
+  total_t = sess.run(tf.train.get_global_step())
 
   # The epsilon decay schedule
   epsilons = np.linspace(epsilon_start, epsilon_end, epsilon_decay_steps)
@@ -431,7 +427,7 @@ tf.reset_default_graph()
 # Where we save our checkpoints and graphs
 experiment_dir = os.path.abspath("./experiments/{}".format(env.spec.id))
 
-# Create a glboal step variable
+# Create a global step variable
 global_step = tf.Variable(0, name='global_step', trainable=False)
 
 # Create estimators
