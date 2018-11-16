@@ -79,18 +79,35 @@ class Estimator():
         X = tf.to_float(self.X_pl) / 255.0
         batch_size = tf.shape(self.X_pl)[0]
 
-        # Three convolutional layers
+        # # Three convolutional layers
         conv1 = tf.contrib.layers.conv2d(X,     32, 8, 4, activation_fn=tf.nn.relu)
         conv2 = tf.contrib.layers.conv2d(conv1, 64, 4, 2, activation_fn=tf.nn.relu)
         conv3 = tf.contrib.layers.conv2d(conv2, 64, 3, 1, activation_fn=tf.nn.relu)
 
-        # LSTM
-        
-
-
         # Fully connected layers
         flattened = tf.contrib.layers.flatten(conv3)
         fc1 = tf.contrib.layers.fully_connected(flattened, 512)
+
+        print("\n\n\n\n")
+        print(fc1)
+        print("\n\n\n\n")
+
+
+        # LSTMs
+        h1 = 256
+        h2 = 128
+        n_cells_layers = [h1, h2]
+        lstm_cells = [tf.nn.rnn_cell.LSTMCell(num_units=n_) for n_ in n_cells_layers]
+        multi_lstm_cell = tf.nn.rnn_cell.MultiRNNCell(lstm_cells)
+        outputs, states = tf.nn.dynamic_rnn(multi_lstm_cell, inputs=X, dtype=tf.float32, scope = "dynamic_rnn")
+        fc2 = tf.contrib.layers.fully_connected(outputs[:,-1], 512)
+
+        print("\n\n\n\n")
+        print(fc2)
+        print("\n\n\n\n")
+
+
+        # fc1 = tf.contrib.layers.fully_connected(flattened, 512)
         self.predictions = tf.contrib.layers.fully_connected(fc1, len(VALID_ACTIONS))
 
         # Get the predictions for the chosen actions only
